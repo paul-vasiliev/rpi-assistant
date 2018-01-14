@@ -1,6 +1,8 @@
 from . import snowboydecoder
 import threading
 import os
+import asyncio
+import functools
 
 
 class DetectorTask(threading.Thread):
@@ -22,26 +24,29 @@ class Detector(object):
     TOP_DIR = os.path.dirname(os.path.abspath(__file__))
     RESOURCE_FILE = os.path.join(TOP_DIR, "resources/common.res")
 
-    def __init__(self, model="snowboy/resources/alexa.umdl", sensitivity=0.75):
+    def __init__(self, model="snowboy/resources/alexa.umdl", sensitivity=0.75, loop = asyncio.get_event_loop()):
         self.task = None
         self.model = model
         self.sensitivity = sensitivity
         self.should_stop = True
-        self.__hotword_detected = False
+        self.hotword_future = None
+        self.loop = loop
 
     def __should_stop(self):
-        """ Runs on a separate thread """
+        """ Called from a separate thread """
         return self.should_stop
 
     def trigger(self):
-        """ Runs on a separate thread """
-        self.__hotword_detected = True
+        """ Called from a separate thread """
+        if self.hotword_future:
+            self.loop.call_soon_threadsafe(
+                functools.partial(lambda f: f.set_result(True), self.hotword_future)
+            )
+            self.hotword_future = None
 
-    def is_triggered(self):
-        return self.__hotword_detected
-
-    def clear_triggered(self):
-        self.__hotword_detected = False
+    def hotword(self):
+        self.hotword_future = asyncio.Future()
+        return self.hotword_future
 
     def start(self):
         self.should_stop = False
