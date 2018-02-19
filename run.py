@@ -1,23 +1,7 @@
-import asyncio
-
-loop = asyncio.get_event_loop()
-
-def create_promise():
-    print("Create promise")
-    p = loop.create_future()
-    def callback():
-        print("Callback called")
-        p.set_result("Test")
-
-    loop.call_later(3, callback)
-    return p
-
-async def main():
-    print("Start main")
-    await create_promise()
-    print("Stop main")
-
-print("Start loop")
-loop.create_task(main())
-loop.run_forever()
-print("Complete")
+import pyaudio
+p = pyaudio.PyAudio()
+info = p.get_host_api_info_by_index(0)
+numdevices = info.get('deviceCount')
+for i in range(0, numdevices):
+        if (p.get_device_info_by_host_api_device_index(0, i).get('maxInputChannels')) > 0:
+            print("Input Device id ", i, " - ", p.get_device_info_by_host_api_device_index(0, i).get('name'))

@@ -2,6 +2,7 @@ import signal
 import logging
 import snowboy.detector
 import asyncio
+import command_recorder
 
 class Application:
     def __init__(self):
@@ -10,6 +11,7 @@ class Application:
         self.logger = self._init_logger()
         self.loop = asyncio.get_event_loop()
         self.detector = snowboy.detector.Detector(loop=self.loop)
+        self.command_recorder = command_recorder.CommandRecorder(loop=self.loop)
 
     def _init_logger(self):
         logging.basicConfig()
@@ -18,16 +20,23 @@ class Application:
         return logger
 
     def start(self):
-        self.detector.start()
         self.logger.info("Application started")
         self.loop.create_task(self.wait())
         self.loop.run_forever()
 
     async def wait(self):
         self.logger.info("WAITING")
+
+        self.detector.start()
         await self.detector.hotword()
+        self.detector.stop()
+
         await self.speak("Yes, Paul")
-        command = await self.listen()
+
+        self.command_recorder.start()
+        command = await self.command_recorder.command()
+        self.command_recorder.stop()
+
         if command:
             await self.speak("Ok")
             await self.execute(command)
@@ -51,12 +60,13 @@ class Application:
 
     def execute(self, command):
         f = asyncio.Future()
-        self.logger.info("EXECUTING: {0}".format(command))
+        self.logger.info("EXECUTING")
         self.loop.call_later(2, lambda: f.set_result(True))
         return f
 
     def stop(self):
         self.loop.stop()
+        # self.command_recorder.stop()
         self.detector.stop()
         self.logger.info("Application stopped")
 

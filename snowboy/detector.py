@@ -31,6 +31,7 @@ class Detector(object):
         self.should_stop = True
         self.hotword_future = None
         self.loop = loop
+        self.running = False
 
     def __should_stop(self):
         """ Called from a separate thread """
@@ -49,6 +50,7 @@ class Detector(object):
         return self.hotword_future
 
     def start(self):
+        self.running = True
         self.should_stop = False
         self.task = DetectorTask(
             snowboy=snowboydecoder.HotwordDetector(
@@ -66,6 +68,9 @@ class Detector(object):
         Stops detector and blocks until Snowboy thread is terminated
         :return:
         """
-        self.should_stop = True
-        self.task.join()
-        self.task = None
+        if self.running:
+            self.should_stop = True
+            self.task.join()
+            self.task = None
+
+        self.running = False
